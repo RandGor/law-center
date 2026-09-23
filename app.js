@@ -7,6 +7,11 @@ const app = express();
 const port = Number.parseInt(process.env.PORT, 10) || 3000;
 const host = process.env.HOST || '0.0.0.0';
 
+// Production traffic arrives through a reverse proxy on the same host.
+// Trust only loopback proxies so req.ip uses X-Forwarded-For without letting
+// clients spoof their address when the application is exposed directly.
+app.set('trust proxy', 'loopback');
+
 const maxDownloadsPerIp = 3;
 const maxDownloadsTotal = 100;
 const maxDownloadDurationMs = 3 * 60 * 1000;

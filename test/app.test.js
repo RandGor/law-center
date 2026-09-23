@@ -6,8 +6,13 @@ const app = require('../app');
 let server;
 let port;
 
-const request = (pathname) => new Promise((resolve, reject) => {
-    const req = http.get({ host: '127.0.0.1', port, path: pathname }, (res) => {
+const request = (pathname, headers = {}) => new Promise((resolve, reject) => {
+    const req = http.get({
+        host: '127.0.0.1',
+        port,
+        path: pathname,
+        headers
+    }, (res) => {
         resolve(res);
     });
     req.on('error', reject);
@@ -54,6 +59,19 @@ test('четвёртая параллельная загрузка с одног
         request('/download/video')
     ]);
 
-    assert.deepEqual(responses.map((res) => res.statusCode), [200, 200, 200, 429]);
+    const statuses = responses.map((res) => res.statusCode).sort();
+    assert.deepEqual(statuses, [200, 200, 200, 429]);
+    responses.forEach((res) => res.destroy());
+});
+
+test('лимит различает IP клиентов за локальным reverse proxy', async () => {
+    const responses = await Promise.all([
+        request('/download/video', { 'X-Forwarded-For': '192.0.2.1' }),
+        request('/download/video', { 'X-Forwarded-For': '192.0.2.2' }),
+        request('/download/video', { 'X-Forwarded-For': '192.0.2.3' }),
+        request('/download/video', { 'X-Forwarded-For': '192.0.2.4' })
+    ]);
+
+    assert.deepEqual(responses.map((res) => res.statusCode), [200, 200, 200, 200]);
     responses.forEach((res) => res.destroy());
 });
